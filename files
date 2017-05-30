@@ -1,0 +1,4 @@
+# Put one directory or file name on each line to back it up. Use absolute paths
+# and make sure directory names ends with a trailing slash. This file is
+# stripped of comments and passed to rsync as a --files-from argument
+/etc/erised/

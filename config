@@ -1,0 +1,23 @@
+# Config file for Erised
+# This file is sourced in erised, so abide bash syntax and don't do anything
+# stupid
+
+# Target parameter to send to Rsync (required)
+# ERISED_TARGET=""
+
+# List of files and directories to backup
+# ERISED_FILELIST="/etc/erised/files"
+
+# Directory where Erised files reside
+# ERISED_DIR="/var/lib/erised"
+
+# Directory where Erised files reside
+# ERISED_PLUGINS="/usr/share/erised/plugins.d"
+
+# Number of backups to keep for each thing by default. This only applies to
+# plugins
+# ERISED_KEEPCOUNT="10"
+
+# Folder to consider as root folder in file list. It is not recommended to
+# change this setting as it primarily exists for testing
+# ERISED_ROOT="/"

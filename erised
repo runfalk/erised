@@ -1,0 +1,76 @@
+#!/bin/bash
+ERISED_CONFIG="${ERISED_CONFIG:-/etc/erised/config}"
+
+# Load user config if it exists
+if [ -e "$ERISED_CONFIG" ]; then
+	. "$ERISED_CONFIG"
+else
+	echo "No configuration file '$ERISED_CONFIG' found. This message can be ignored"
+fi
+
+if [ -z "$ERISED_TARGET" ]; then
+	echo "Error: No rsync target found, make sure ERISED_TARGET is defined" > /dev/stderr
+	exit 1
+fi
+
+# Load default values
+ERISED_DIR="${ERISED_DIR:-/var/lib/erised}"
+ERISED_FILELIST="${ERISED_FILELIST:-/etc/erised/files}"
+ERISED_PLUGINS="${ERISED_PLUGINS:-/usr/share/erised/plugins.d}"
+ERISED_KEEPCOUNT="${ERISED_KEEPCOUNT:-10}"
+ERISED_ROOT="${ERISED_ROOT:-/}"
+
+# Save backup start time
+backup_start=($(date +%s))
+
+# Create backup dir if it doesn't already exist
+test -d "$ERISED_DIR" || mkdir -p "$ERISED_DIR"
+
+# Create a temporary file containing a list of files to sync and fill it with
+# file list ERISED_FILELIST
+temp_filelist=($(tempfile -p erised))
+grep "^[^#]" "$ERISED_FILELIST" > "$temp_filelist"
+
+# Run backup plugins if any
+if [ -d "$ERISED_PLUGINS" ]; then
+	for plugin in $(ls "$ERISED_PLUGINS"); do
+		echo "Running backup plugin $plugin"
+		bash \
+			"$ERISED_PLUGINS/$plugin" \
+			"$ERISED_DIR" \
+			"$temp_filelist" \
+			"$backup_start" \
+			"$ERISED_KEEPCOUNT"
+	done
+else
+	echo "No plugins found"
+fi
+
+# Backup filesystem
+rsync -arhu --progress --delete-after --files-from="$temp_filelist" / "ERISED_TARGET"
+rsync_status="$?"
+
+# Save finish time
+backup_end=($(date +%s))
+
+if [ $rsync_status -ne 0 ]; then
+	echo "Error: rsync failed with code $rsync_status" >> /dev/stderr
+else
+	# Print end data
+	echo "Synced the paths:"
+	sed -e 's/^/    /' "$temp_filelist"
+	echo ""
+	echo "Started  $(date -d@$backup_start)"
+	echo "Finished $(date -d@$backup_end)"
+	echo "Time     $(expr $backup_end - $backup_start) seconds"
+fi
+
+# Remove temporary file list
+rm "$temp_filelist"
+
+# We need to fail properly if syncing failed
+if [ $rsync_status -ne 0 ]; then
+	exit 2
+else
+	exit 0
+fi
